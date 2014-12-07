@@ -35,40 +35,13 @@ func TestBigQuery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// BigQueryの初期化
-	bq, err := bigquery.New(client)
-	if err != nil {
-		t.Log("bigquery.New")
-		t.Fatal(err)
-	}
-
-	// var tableSchema = &bigquery.TableSchema {
-	// 		Fields: []*bigquery.TableFieldSchema{
-	// 			&bigquery.TableFieldSchema{Name: "date", Type: "timestamp"},
-	// 			&bigquery.TableFieldSchema{Name: "no", Type: "integer"},
-	// 			&bigquery.TableFieldSchema{Name: "vpos", Type: "integer"},
-	// 			&bigquery.TableFieldSchema{Name: "comment", Type: "string"},
-	// 			&bigquery.TableFieldSchema{Name: "command", Type: "string"},
-	// 			},
-	// 	}
-
 	// Bigquery側のテーブルの存在確認
-	// _, err = bq.Tables.Get(projectID, datasetID, tableID).Do()
 	var tables Tables
 	_, err = tables.Get(client, projectID, datasetID, tableID)
 	if err != nil {
 		// テーブルがないので作る。
 		t.Log("Table Not Found. start create table")
 
-		// var newTable bigquery.Table
-		// newTable.TableReference = &bigquery.TableReference{DatasetId: datasetID, ProjectId: projectID, TableId: tableID}
-		// newTable.Schema = tableSchema
-
-		// insRes, insErr := bq.Tables.Insert(projectID, datasetID, &newTable).Do()
-		// if insErr != nil {
-		// 	t.Log("tables.Insert")
-		// 	t.Fatal(insErr)
-		// }
 		var nicoType NicoVideo
 		insRes, insErr := tables.Insert(client, projectID, datasetID, tableID, nicoType)
 		if insErr != nil {
@@ -90,6 +63,8 @@ func TestBigQuery(t *testing.T) {
 	// 出力
 	br := bufio.NewReader(f)
 
+	tabledata := new(TableData)
+
 	for {
 		line, _, err := br.ReadLine()
 		if err != nil {
@@ -105,21 +80,10 @@ func TestBigQuery(t *testing.T) {
 			t.Fatalf("NicoVideo Format Error. %v \n", err)
 		}
 
-		rowMap := make(map[string]bigquery.JsonValue)
-		rowMap["date"] = nico.Date
-		rowMap["no"] = nico.No
-		rowMap["vpos"] = nico.Vpos
-		rowMap["comment"] = nico.Comment
-		rowMap["command"] = nico.Command
-
-
-		row := &bigquery.TableDataInsertAllRequestRows {
-			Json: rowMap,
-		}
-		request.Rows = append(request.Rows, row)
+		tabledata.Add(nico)
 	}
 
-	resTablesData, err := bq.Tabledata.InsertAll(projectID, datasetID, tableID, &request).Do()
+	resTablesData, err := tabledata.InsertAll(client, projectID, datasetID, tableID)
 	if err != nil {
 		t.Log("TablesData.InsertAll")
 		for row := range request.Rows {
